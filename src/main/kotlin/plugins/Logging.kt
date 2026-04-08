@@ -2,7 +2,10 @@ package com.example.plugins
 
 import io.ktor.server.application.*
 import io.ktor.server.plugins.calllogging.*
+import org.slf4j.event.Level
 
 fun Application.configureLogging() {
-    install(CallLogging)
+    install(CallLogging) {
+        level = Level.INFO
+    }
 }

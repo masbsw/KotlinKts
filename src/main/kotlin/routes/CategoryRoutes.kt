@@ -1,58 +1,49 @@
 package com.example.routes
 
-import com.example.repository.CategoryRepository
-import com.example.repository.TaskRepository
+import com.example.models.CreateCategoryRequest
+import com.example.models.UpdateCategoryRequest
+import com.example.services.CategoryService
+import com.example.services.TaskService
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.categoryRoutes(categoryRepository: CategoryRepository, taskRepository: TaskRepository) {
+fun Route.categoryRoutes(
+    categoryService: CategoryService,
+    taskService: TaskService,
+) {
+    authenticate("auth-jwt") {
+        route("/api/categories") {
+            get {
+                call.respond(categoryService.getAll())
+            }
 
-    route("/api/categories") {
+            post {
+                val request = call.receive<CreateCategoryRequest>()
+                call.respond(HttpStatusCode.Created, categoryService.create(request))
+            }
 
-        get {
-            val categories = categoryRepository.getAll()
-            call.respond(categories)
-        }
+            get("/{id}") {
+                call.respond(categoryService.getById(call.requireIdParameter("id")))
+            }
 
-        post {
-            val body = call.receive<Map<String, String>>()
-            val name = body["name"] ?: return@post call.respond(HttpStatusCode.BadRequest)
-            categoryRepository.create(name)
-            call.respond(HttpStatusCode.Created)
-        }
+            get("/{id}/tasks") {
+                val categoryId = call.requireIdParameter("id")
+                call.respond(taskService.getByCategory(categoryId, call.userId()))
+            }
 
-        get("/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val category = categoryRepository.getById(id)
-                ?: return@get call.respond(HttpStatusCode.NotFound)
-            call.respond(category)
-        }
+            put("/{id}") {
+                val request = call.receive<UpdateCategoryRequest>()
+                call.respond(categoryService.update(call.requireIdParameter("id"), request))
+            }
 
-        get("/{id}/tasks") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val tasks = taskRepository.getByCategory(id)
-            call.respond(tasks)
-        }
-
-        put("/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@put call.respond(HttpStatusCode.BadRequest)
-            val body = call.receive<Map<String, String>>()
-            val name = body["name"] ?: return@put call.respond(HttpStatusCode.BadRequest)
-            categoryRepository.update(id, name)
-            call.respond(HttpStatusCode.OK)
-        }
-
-        delete("/{id}") {
-            val id = call.parameters["id"]?.toIntOrNull()
-                ?: return@delete call.respond(HttpStatusCode.BadRequest)
-            categoryRepository.delete(id)
-            call.respond(HttpStatusCode.OK)
+            delete("/{id}") {
+                categoryService.delete(call.requireIdParameter("id"))
+                call.respond(HttpStatusCode.OK, mapOf("message" to "Category deleted"))
+            }
         }
     }
 }

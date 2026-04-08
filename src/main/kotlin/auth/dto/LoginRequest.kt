@@ -1,4 +1,9 @@
 package com.example.auth.dto
 
-class LoginRequest {
-}
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class LoginRequest(
+    val email: String,
+    val password: String,
+)
